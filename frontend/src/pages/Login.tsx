@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import apiClient from '../api/client';
+import { getErrorMessage } from '../utils/errors';
 import { Shield, Stethoscope, Lock, Mail, AlertCircle } from 'lucide-react';
 
 const Login: React.FC = () => {
@@ -20,19 +21,13 @@ const Login: React.FC = () => {
 
     try {
       const response = await apiClient.post('/auth/login', { email, password });
-      const { token, professional, administrator } = response.data;
+      const { professional, administrator } = response.data;
+      const authenticatedUser = administrator ?? professional;
 
-      if (administrator) {
-        // Si el backend responde con objeto admin
-        login(token, administrator, true);
-        navigate('/admin');
-      } else {
-        // Si responde con objeto profesional
-        login(token, professional, false);
-        navigate('/dashboard');
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error de conexión con el servidor');
+      login(authenticatedUser);
+      navigate(authenticatedUser.role === 'admin' ? '/admin' : '/dashboard');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Error de conexión con el servidor'));
     } finally {
       setLoading(false);
     }
@@ -44,7 +39,7 @@ const Login: React.FC = () => {
         
         {/* Encabezado Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="p-3 bg-blue-100 rounded-full text-blue-600 mb-3">
+          <div className="p-3 bg-emerald-100 rounded-full text-emerald-700 mb-3">
             <Stethoscope size={32} />
           </div>
           <h1 className="text-2xl font-bold text-slate-800">InterTerapia</h1>
@@ -69,7 +64,7 @@ const Login: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="usuario@interterapia.cl"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all text-slate-800"
               />
             </div>
           </div>
@@ -84,7 +79,7 @@ const Login: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all text-slate-800"
               />
             </div>
           </div>
@@ -92,7 +87,7 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 cursor-pointer"
+            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-medium py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'Validando Credenciales...' : 'Ingresar a la Plataforma'}
           </button>

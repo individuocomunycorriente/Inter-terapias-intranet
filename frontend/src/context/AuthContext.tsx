@@ -1,71 +1,53 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import apiClient from '../api/client';
+import type { AuthUser } from '../types';
+import { AuthContext } from './authContextInstance';
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  specialty?: string; // Solo profesionales
+function extractUser(data: { administrator?: AuthUser; professional?: AuthUser }): AuthUser | null {
+  return data.administrator ?? data.professional ?? null;
 }
-
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  role: 'admin' | 'professional' | null;
-  login: (token: string, userData: User, isChangeToAdmin?: boolean) => void;
-  logout: () => void;
-  loading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<'admin' | 'professional' | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Recuperar sesión al recargar la página
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    const storedRole = localStorage.getItem('role');
+    // La sesión vive en una cookie httpOnly; la restauramos preguntándole al backend
+    // en vez de confiar en algo guardado localmente en el navegador.
+    let cancelled = false;
 
-    if (storedToken && storedUser && storedRole) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setRole(storedRole as 'admin' | 'professional');
-    }
-    setLoading(false);
-  } , []);
+    apiClient
+      .get('/auth/me')
+      .then((response) => {
+        if (!cancelled) setUser(extractUser(response.data));
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  const login = (newToken: string, userData: User, isChangeToAdmin = false) => {
-    const userRole = isChangeToAdmin ? 'admin' : 'professional';
-    
-    setToken(newToken);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = (userData: AuthUser) => {
     setUser(userData);
-    setRole(userRole);
-
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('role', userRole);
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    setRole(null);
-    localStorage.clear();
+  const logout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, role, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth debe usarse dentro de un AuthProvider');
-  return context;
 };

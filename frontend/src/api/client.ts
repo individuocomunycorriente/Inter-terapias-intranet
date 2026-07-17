@@ -6,23 +6,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,
+  // La sesión viaja en una cookie httpOnly seteada por el backend; el navegador
+  // la adjunta solo si withCredentials está activo (necesario cross-port en dev).
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// Interceptor para inyectar automáticamente el Token JWT en cada petición
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 export default apiClient;

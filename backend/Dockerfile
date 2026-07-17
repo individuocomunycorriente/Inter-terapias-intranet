@@ -7,6 +7,9 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+# El postinstall de @prisma/client corrió antes de que existiera schema.prisma en la imagen,
+# así que regeneramos el cliente ahora que el schema real ya está copiado.
+RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" npx prisma generate
 RUN npm run build
 
 # --- ETAPA 2: Ejecución ---
@@ -24,12 +27,13 @@ RUN if [ "$NODE_ENV" = "development" ]; then npm install; else npm install --onl
 COPY prisma ./prisma/
 RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder" npx prisma generate
 
-RUN npx prisma generate
-
-# Copiamos el código compilado
+# Copiamos el código compilado.
+# En desarrollo, docker-compose monta ./backend:/app encima de esto, así que src/
+# también queda disponible para nodemon; en producción solo se necesita dist/.
 COPY --from=builder /app/dist ./dist
-# Copiamos el resto de archivos (necesario para leer src/ en caliente)
-COPY . .
+
+RUN chown -R node:node /app
+USER node
 
 EXPOSE 4000
 

@@ -74,4 +74,5 @@ model ClinicalReport {
   additionalComments  String?      // Observaciones adicionales o tareas para la casa
 
   createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 }

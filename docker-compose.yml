@@ -1,18 +1,21 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}      
-      POSTGRES_PASSWORD: ${DB_PASSWORD} 
-      POSTGRES_DB: ${DB_NAME}       
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -21,19 +24,22 @@ services:
       args:
         - NODE_ENV=${NODE_ENV}
     ports:
-      - "${PORT}:${PORT}" 
+      - "${PORT}:${PORT}"
     environment:
       - PORT=${PORT}
       - NODE_ENV=${NODE_ENV}
-      - DATABASE_URL=${DATABASE_URL} 
+      - DATABASE_URL=${DATABASE_URL}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
     volumes:
-      - ./backend:/app text       
+      - ./backend:/app
       - /app/node_modules
     depends_on:
-      - db
-    command: sh -c "sleep 5 && npx prisma migrate dev --name init --skip-generate && npx prisma db seed && npm run dev"
+      db:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run dev"
   frontend:
     build:
       context: ./frontend

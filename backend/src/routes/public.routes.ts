@@ -1,15 +1,17 @@
 // src/routes/public.routes.ts
 import { Router } from 'express';
-import { login, registerProfessional } from '../controllers/auth.controller';
+import { login } from '../controllers/auth.controller';
 import { getPublicProfessionals } from '../controllers/professional.controller';
+import { validate } from '../middlewares/validate.middleware';
+import { loginSchema } from '../validators/auth.validators';
+import { loginLimiter } from '../middlewares/rateLimit.middleware';
 
 const router = Router();
 
 // Rutas públicas de la Web de Difusión
-router.get('/professionals', getPublicProfessionals); // Sección pública "Profesionales" 
+router.get('/professionals', getPublicProfessionals); // Sección pública "Profesionales"
 
-// Rutas de Autenticación para la Intranet 
-router.post('/auth/login', login);
-router.post('/auth/register-internal-only', registerProfessional); // Registro de profesionales
+// Autenticación para la Intranet
+router.post('/auth/login', loginLimiter, validate(loginSchema), login);
 
 export default router;
