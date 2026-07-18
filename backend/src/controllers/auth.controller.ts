@@ -6,10 +6,14 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { AppError } from '../utils/AppError';
 
-const COOKIE_OPTIONS = {
+const COOKIE_OPTIONS: { httpOnly: boolean; secure: boolean; sameSite: 'lax' | 'none' } = {
   httpOnly: true, // 🔒 Inaccesible para scripts maliciosos de JavaScript en el navegador
   secure: env.isProduction, // Solo viaja por HTTPS en producción
-  sameSite: 'lax' as const, // Protección nativa contra ataques CSRF
+  // En producción, frontend y backend viven en dominios distintos (subdominios de Railway),
+  // así que la cookie necesita SameSite=None (+ Secure) para viajar en los fetch cross-origin.
+  // En local, frontend y backend comparten "site" (localhost), así que Lax basta y evita
+  // depender de HTTPS en desarrollo.
+  sameSite: env.isProduction ? 'none' : 'lax',
 };
 
 export const login = async (req: Request, res: Response): Promise<void> => {

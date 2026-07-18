@@ -37,4 +37,8 @@ USER node
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"development\" ]; then npm run dev; else npm start; fi"]
+
+# En producción no hay un `command:` de docker-compose que aplique las migraciones,
+# así que hay que correrlas acá antes de levantar el servidor (npx prisma migrate deploy
+# es idempotente: no reaplica migraciones ya aplicadas).
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = \"development\" ]; then npm run dev; else npx prisma migrate deploy && npm start; fi"]
